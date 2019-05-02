@@ -6,6 +6,7 @@ import Browser
 import Browser.Events
 import Html
 import Html.Attributes
+import Html.Events
 import Math.Matrix4
 import Math.Vector3
 import WebGL
@@ -30,7 +31,9 @@ main =
 
 
 type alias Model =
-    { currentTime : Float }
+    { currentTime : Float
+    , paused : Bool
+    }
 
 
 type alias Time =
@@ -53,7 +56,9 @@ type alias Vertex =
 
 initialModel : Model
 initialModel =
-    { currentTime = 0 }
+    { currentTime = 0
+    , paused = False
+    }
 
 
 init : () -> ( Model, Cmd Msg )
@@ -67,13 +72,22 @@ init _ =
 
 type Msg
     = GameLoop Time
+    | ToggledPause
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         GameLoop elapsed ->
-            ( { model | currentTime = model.currentTime + elapsed }, Cmd.none )
+            if model.paused then
+                ( model, Cmd.none )
+
+            else
+                ( { model | currentTime = model.currentTime + elapsed }, Cmd.none )
+
+        ToggledPause ->
+            ( { model | paused = not model.paused }, Cmd.none )
+
 
 
 -- SUBSCRIPTIONS
@@ -88,10 +102,23 @@ subscriptions model =
 -- VIEW
 
 
-view : Model -> Html.Html msg
+view : Model -> Html.Html Msg
 view model =
     Html.div []
-        [ webGL model ]
+        [ webGL model
+        , pauseButton model.paused
+        ]
+
+
+pauseButton : Bool -> Html.Html Msg
+pauseButton pausedState =
+    if pausedState then
+        Html.button [ Html.Events.onClick ToggledPause ]
+            [ Html.text "Resume" ]
+
+    else
+        Html.button [ Html.Events.onClick ToggledPause ]
+            [ Html.text "Pause" ]
 
 
 
@@ -122,11 +149,11 @@ entity model =
         { perspective = perspective (model.currentTime / 1000) }
 
 
-perspective : Float -> Math.Matrix4.Mat4
-perspective t =
+perspective : Time -> Math.Matrix4.Mat4
+perspective time =
     Math.Matrix4.mul
         (Math.Matrix4.makePerspective 45 1 0.01 100)
-        (Math.Matrix4.makeLookAt (Math.Vector3.vec3 (4 * cos t) 0 (4 * sin t)) (Math.Vector3.vec3 0 0 0) (Math.Vector3.vec3 0 1 0))
+        (Math.Matrix4.makeLookAt (Math.Vector3.vec3 (4 * cos time) 0 (4 * sin time)) (Math.Vector3.vec3 0 0 0) (Math.Vector3.vec3 0 1 0))
 
 
 
@@ -174,9 +201,9 @@ mesh =
 
 triangle : Triangle
 triangle =
-    ( { position = Math.Vector3.vec3 0 0 0, color = Math.Vector3.vec3 1 0 0 }
+    ( { position = Math.Vector3.vec3 -1 -1 0, color = Math.Vector3.vec3 1 0 0 }
     , { position = Math.Vector3.vec3 1 1 0, color = Math.Vector3.vec3 0 1 0 }
-    , { position = Math.Vector3.vec3 1 -1 0, color = Math.Vector3.vec3 0 0 1 }
+    , { position = Math.Vector3.vec3 0 0 1, color = Math.Vector3.vec3 0 0 1 }
     )
 
 
